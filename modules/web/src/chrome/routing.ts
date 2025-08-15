@@ -119,6 +119,10 @@ const routes: Routes = [
         path: 'statefulset',
         loadChildren: () => import('resource/workloads/statefulset/module').then(m => m.StatefulSetModule),
       },
+      {
+        path: 'backup',
+        loadChildren: () => import('resource/workloads/backup/module').then(m => m.BackupModule),
+      },
 
       // Discovery and load balancing group
       {

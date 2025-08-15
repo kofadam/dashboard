@@ -40,6 +40,7 @@ export enum ListIdentifier {
   secret = 'secretList',
   replicationController = 'replicationControllerList',
   statefulSet = 'statefulSetList',
+  backup = 'backupList',
   event = 'event',
   resource = 'resource',
 }
