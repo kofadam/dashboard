@@ -31,6 +31,7 @@ import (
 	"k8s.io/dashboard/api/pkg/handler/parser"
 	"k8s.io/dashboard/api/pkg/integration"
 	"k8s.io/dashboard/api/pkg/resource/clusterrole"
+	"k8s.io/dashboard/api/pkg/resource/backup"
 	"k8s.io/dashboard/api/pkg/resource/clusterrolebinding"
 	"k8s.io/dashboard/api/pkg/resource/common"
 	"k8s.io/dashboard/api/pkg/resource/configmap"
@@ -764,6 +765,19 @@ func CreateHTTPAPIHandler(iManager integration.Manager) (*restful.Container, err
 			Writes(secret.SecretList{}).
 			Returns(http.StatusOK, "OK", secret.SecretList{}))
 
+	// Velero Backup
+	apiV1Ws.Route(apiV1Ws.GET("/backup").To(apiHandler.handleGetBackupList).
+		// docs
+		Doc("returns a list of Velero Backups from all namespaces").
+		Writes(backup.BackupList{}).
+		Returns(http.StatusOK, "OK", backup.BackupList{}))
+	apiV1Ws.Route(apiV1Ws.GET("/backup/{namespace}").To(apiHandler.handleGetBackupList).
+		// docs
+		Doc("returns a list of Velero Backups in a namespace").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Backup")).
+		Writes(backup.BackupList{}).
+		Returns(http.StatusOK, "OK", backup.BackupList{}))
+
 	// Ingress
 	apiV1Ws.Route(apiV1Ws.GET("/ingress").To(apiHandler.handleGetIngressList).
 		// docs
@@ -1277,13 +1291,28 @@ func CreateHTTPAPIHandler(iManager integration.Manager) (*restful.Container, err
 	return wsContainer, nil
 }
 
+func (in *APIHandler) handleGetBackupList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := client.Client(request.Request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	dataSelect := parser.ParseDataSelectPathParameter(request)
+	namespace := parseNamespacePathParameter(request)
+	result, err := backup.GetBackupList(k8sClient, namespace, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	_ = response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
 func (in *APIHandler) handleGetClusterRoleList(request *restful.Request, response *restful.Response) {
 	k8sClient, err := client.Client(request.Request)
 	if err != nil {
 		errors.HandleInternalError(response, err)
 		return
 	}
-
 	dataSelect := parser.ParseDataSelectPathParameter(request)
 	result, err := clusterrole.GetClusterRoleList(k8sClient, dataSelect)
 	if err != nil {

@@ -52,6 +52,11 @@ const (
 	ResourceKindEndpoint                 = "endpoint"
 	ResourceKindNetworkPolicy            = "networkpolicy"
 	ResourceKindIngressClass             = "ingressclass"
+
+    // Velero Resource Kinds
+    ResourceKindVeleroBackup             = "backup"
+    ResourceKindVeleroRestore            = "restore"
+    ResourceKindVeleroSchedule           = "schedule"
 )
 
 // Scalable method return whether ResourceKind is scalable.
