@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-  import {HttpParams} from '@angular/common/http';
-  import {ChangeDetectionStrategy, ChangeDetectorRef, Component} from '@angular/core';
-  import {Observable} from 'rxjs';
-  import {ResourceListBase} from '../../../../common/resources/list';
-  import {NotificationsService} from '../../../../common/services/global/notifications';
-  import {NamespacedResourceService} from '../../../../common/services/resource/resource';
-  import {VeleroBackup, VeleroBackupList} from '../../../../common/interfaces/velero';
-  import {ListGroupIdentifier, ListIdentifier} from '../../../../common/components/resourcelist/groupids';
-
+import {HttpParams} from '@angular/common/http';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component} from '@angular/core';
+import {Observable} from 'rxjs';
+import {ResourceListBase} from '../../../../common/resources/list';
+import {NotificationsService} from '../../../../common/services/global/notifications';
+import {NamespacedResourceService} from '../../../../common/services/resource/resource';
+import {VeleroBackup, VeleroBackupList} from '../../../../common/interfaces/velero';
+import {ListGroupIdentifier, ListIdentifier} from '../../../../common/components/resourcelist/groupids';
 
 @Component({
   selector: 'kd-backup-list',
