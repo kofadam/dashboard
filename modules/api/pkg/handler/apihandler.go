@@ -30,9 +30,8 @@ import (
 
 	"k8s.io/dashboard/api/pkg/handler/parser"
 	"k8s.io/dashboard/api/pkg/integration"
-	"k8s.io/dashboard/api/pkg/resource/clusterrole"
 	"k8s.io/dashboard/api/pkg/resource/backup"
-	"k8s.io/dashboard/api/pkg/resource/restore"
+	"k8s.io/dashboard/api/pkg/resource/clusterrole"
 	"k8s.io/dashboard/api/pkg/resource/clusterrolebinding"
 	"k8s.io/dashboard/api/pkg/resource/common"
 	"k8s.io/dashboard/api/pkg/resource/configmap"
@@ -59,6 +58,7 @@ import (
 	"k8s.io/dashboard/api/pkg/resource/poddisruptionbudget"
 	"k8s.io/dashboard/api/pkg/resource/replicaset"
 	"k8s.io/dashboard/api/pkg/resource/replicationcontroller"
+	"k8s.io/dashboard/api/pkg/resource/restore"
 	"k8s.io/dashboard/api/pkg/resource/role"
 	"k8s.io/dashboard/api/pkg/resource/rolebinding"
 	"k8s.io/dashboard/api/pkg/resource/secret"
@@ -768,42 +768,55 @@ func CreateHTTPAPIHandler(iManager integration.Manager) (*restful.Container, err
 
 	// Velero Backup
 	apiV1Ws.Route(apiV1Ws.GET("/backup").To(apiHandler.handleGetBackupList).
-			// docs
-			Doc("returns a list of Velero Backups from all namespaces").
-			Writes(backup.BackupList{}).
-			Returns(http.StatusOK, "OK", backup.BackupList{}))
+		// docs
+		Doc("returns a list of Velero Backups from all namespaces").
+		Writes(backup.BackupList{}).
+		Returns(http.StatusOK, "OK", backup.BackupList{}))
 	apiV1Ws.Route(apiV1Ws.GET("/backup/{namespace}").To(apiHandler.handleGetBackupList).
-			// docs
-			Doc("returns a list of Velero Backups in a namespace").
-			Param(apiV1Ws.PathParameter("namespace", "namespace of the Backup")).
-			Writes(backup.BackupList{}).
-			Returns(http.StatusOK, "OK", backup.BackupList{}))
+		// docs
+		Doc("returns a list of Velero Backups in a namespace").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Backup")).
+		Writes(backup.BackupList{}).
+		Returns(http.StatusOK, "OK", backup.BackupList{}))
 	apiV1Ws.Route(apiV1Ws.GET("/backup/{namespace}/{name}").To(apiHandler.handleGetBackupDetail).
-			// docs
-			Doc("returns detailed information about Velero Backup").
-			Param(apiV1Ws.PathParameter("namespace", "namespace of the Backup")).
-			Param(apiV1Ws.PathParameter("name", "name of the Backup")).
-			Writes(backup.BackupDetail{}).
-			Returns(http.StatusOK, "OK", backup.BackupDetail{}))
+		// docs
+		Doc("returns detailed information about Velero Backup").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Backup")).
+		Param(apiV1Ws.PathParameter("name", "name of the Backup")).
+		Writes(backup.BackupDetail{}).
+		Returns(http.StatusOK, "OK", backup.BackupDetail{}))
+	apiV1Ws.Route(apiV1Ws.POST("/backup/{namespace}").To(apiHandler.handleCreateBackup).
+		// docs
+		Doc("creates a new Velero Backup").
+		Param(apiV1Ws.PathParameter("namespace", "namespace for the Backup")).
+		Reads(backup.BackupSpec{}).
+		Writes(backup.Backup{}).
+		Returns(http.StatusCreated, "Created", backup.Backup{}))
+	apiV1Ws.Route(apiV1Ws.DELETE("/backup/{namespace}/{name}").To(apiHandler.handleDeleteBackup).
+		// docs
+		Doc("deletes a Velero Backup").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Backup")).
+		Param(apiV1Ws.PathParameter("name", "name of the Backup")).
+		Returns(http.StatusOK, "OK", nil))
 	// Velero Restore
 	apiV1Ws.Route(apiV1Ws.GET("/restore").To(apiHandler.handleGetRestoreList).
-			// docs
-			Doc("returns a list of Velero Restores from all namespaces").
-			Writes(restore.RestoreList{}).
-			Returns(http.StatusOK, "OK", restore.RestoreList{}))
+		// docs
+		Doc("returns a list of Velero Restores from all namespaces").
+		Writes(restore.RestoreList{}).
+		Returns(http.StatusOK, "OK", restore.RestoreList{}))
 	apiV1Ws.Route(apiV1Ws.GET("/restore/{namespace}").To(apiHandler.handleGetRestoreList).
-			// docs
-			Doc("returns a list of Velero Restores in a namespace").
-			Param(apiV1Ws.PathParameter("namespace", "namespace of the Restore")).
-			Writes(restore.RestoreList{}).
-			Returns(http.StatusOK, "OK", restore.RestoreList{}))
+		// docs
+		Doc("returns a list of Velero Restores in a namespace").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Restore")).
+		Writes(restore.RestoreList{}).
+		Returns(http.StatusOK, "OK", restore.RestoreList{}))
 	apiV1Ws.Route(apiV1Ws.GET("/restore/{namespace}/{name}").To(apiHandler.handleGetRestoreDetail).
-			// docs
-			Doc("returns detailed information about Velero Restore").
-			Param(apiV1Ws.PathParameter("namespace", "namespace of the Restore")).
-			Param(apiV1Ws.PathParameter("name", "name of the Restore")).
-			Writes(restore.RestoreDetail{}).
-			Returns(http.StatusOK, "OK", restore.RestoreDetail{}))
+		// docs
+		Doc("returns detailed information about Velero Restore").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Restore")).
+		Param(apiV1Ws.PathParameter("name", "name of the Restore")).
+		Writes(restore.RestoreDetail{}).
+		Returns(http.StatusOK, "OK", restore.RestoreDetail{}))
 
 	// Ingress
 	apiV1Ws.Route(apiV1Ws.GET("/ingress").To(apiHandler.handleGetIngressList).
@@ -1338,6 +1351,41 @@ func (in *APIHandler) handleGetBackupDetail(request *restful.Request, response *
 		return
 	}
 	_ = response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (in *APIHandler) handleCreateBackup(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+
+	var spec backup.BackupSpec
+	if err := request.ReadEntity(&spec); err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	// Set namespace from URL if not provided in spec
+	if spec.Namespace == "" {
+		spec.Namespace = namespace.ToRequestParam()
+	}
+
+	result, err := backup.CreateBackup(request.Request, &spec)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	_ = response.WriteHeaderAndEntity(http.StatusCreated, result)
+}
+
+func (in *APIHandler) handleDeleteBackup(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+	name := request.PathParameter("name")
+
+	err := backup.DeleteBackup(request.Request, namespace.ToRequestParam(), name)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
 }
 
 func (in *APIHandler) handleGetRestoreList(request *restful.Request, response *restful.Response) {
