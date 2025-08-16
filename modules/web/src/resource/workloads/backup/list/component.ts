@@ -21,12 +21,12 @@ import {Component} from '@angular/core';
       <h2>Velero Backups</h2>
       <p><strong>Items: 1</strong></p>
       <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
-        <strong>Name:</strong> kind-cluster-backup<br>
-        <strong>Status:</strong> Completed<br>
+        <strong>Name:</strong> kind-cluster-backup<br />
+        <strong>Status:</strong> Completed<br />
         <strong>Created:</strong> Test Data
       </div>
       <p><em>API Integration: Working ✅</em></p>
     </div>
-  `
+  `,
 })
 export class BackupListComponent {}
