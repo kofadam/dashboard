@@ -1292,14 +1292,9 @@ func CreateHTTPAPIHandler(iManager integration.Manager) (*restful.Container, err
 }
 
 func (in *APIHandler) handleGetBackupList(request *restful.Request, response *restful.Response) {
-	k8sClient, err := client.Client(request.Request)
-	if err != nil {
-		errors.HandleInternalError(response, err)
-		return
-	}
 	dataSelect := parser.ParseDataSelectPathParameter(request)
 	namespace := parseNamespacePathParameter(request)
-	result, err := backup.GetBackupList(k8sClient, namespace, dataSelect)
+	result, err := backup.GetBackupList(request.Request, namespace, dataSelect)
 	if err != nil {
 		errors.HandleInternalError(response, err)
 		return
