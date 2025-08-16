@@ -33,3 +33,7 @@ charts/kubernetes-dashboard/charts
 
 # Cypress
 screenshots
+modules/api/api
+modules/*/api
+*.bin
+dist/
