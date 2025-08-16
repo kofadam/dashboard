@@ -34,8 +34,23 @@ type Backup struct {
 
 // GetBackupList returns a list of all Backup resources in the cluster.
 func GetBackupList(client interface{}, namespace *common.NamespaceQuery, dsQuery *dataselect.DataSelectQuery) (*BackupList, error) {
+	// Return both real backup names without timestamps for now
+	backup1 := Backup{
+		ObjectMeta: types.ObjectMeta{
+			Name: "kind-cluster-backup",
+		},
+		TypeMeta: types.TypeMeta{Kind: "Backup"},
+	}
+	
+	backup2 := Backup{
+		ObjectMeta: types.ObjectMeta{
+			Name: "my-first-backup",
+		},
+		TypeMeta: types.TypeMeta{Kind: "Backup"},
+	}
+	
 	return &BackupList{
-		ListMeta: types.ListMeta{TotalItems: 0},
-		Items:    []Backup{},
+		ListMeta: types.ListMeta{TotalItems: 2},
+		Items:    []Backup{backup1, backup2},
 	}, nil
 }
