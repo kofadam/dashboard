@@ -817,6 +817,19 @@ func CreateHTTPAPIHandler(iManager integration.Manager) (*restful.Container, err
 		Param(apiV1Ws.PathParameter("name", "name of the Restore")).
 		Writes(restore.RestoreDetail{}).
 		Returns(http.StatusOK, "OK", restore.RestoreDetail{}))
+	apiV1Ws.Route(apiV1Ws.POST("/restore/{namespace}").To(apiHandler.handleCreateRestore).
+		// docs
+		Doc("creates a new Velero Restore").
+		Param(apiV1Ws.PathParameter("namespace", "namespace for the Restore")).
+		Reads(restore.RestoreSpec{}).
+		Writes(restore.Restore{}).
+		Returns(http.StatusCreated, "Created", restore.Restore{}))
+	apiV1Ws.Route(apiV1Ws.DELETE("/restore/{namespace}/{name}").To(apiHandler.handleDeleteRestore).
+		// docs
+		Doc("deletes a Velero Restore").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Restore")).
+		Param(apiV1Ws.PathParameter("name", "name of the Restore")).
+		Returns(http.StatusOK, "OK", nil))
 
 	// Ingress
 	apiV1Ws.Route(apiV1Ws.GET("/ingress").To(apiHandler.handleGetIngressList).
@@ -1408,6 +1421,41 @@ func (in *APIHandler) handleGetRestoreDetail(request *restful.Request, response 
 		return
 	}
 	_ = response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (in *APIHandler) handleCreateRestore(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+
+	var spec restore.RestoreSpec
+	if err := request.ReadEntity(&spec); err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	// Set namespace from URL if not provided in spec
+	if spec.Namespace == "" {
+		spec.Namespace = namespace.ToRequestParam()
+	}
+
+	result, err := restore.CreateRestore(request.Request, &spec)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	_ = response.WriteHeaderAndEntity(http.StatusCreated, result)
+}
+
+func (in *APIHandler) handleDeleteRestore(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+	name := request.PathParameter("name")
+
+	err := restore.DeleteRestore(request.Request, namespace.ToRequestParam(), name)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
 }
 
 func (in *APIHandler) handleGetClusterRoleList(request *restful.Request, response *restful.Response) {
