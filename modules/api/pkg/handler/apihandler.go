@@ -61,6 +61,7 @@ import (
 	"k8s.io/dashboard/api/pkg/resource/restore"
 	"k8s.io/dashboard/api/pkg/resource/role"
 	"k8s.io/dashboard/api/pkg/resource/rolebinding"
+	"k8s.io/dashboard/api/pkg/resource/schedule"
 	"k8s.io/dashboard/api/pkg/resource/secret"
 	"k8s.io/dashboard/api/pkg/resource/service"
 	"k8s.io/dashboard/api/pkg/resource/serviceaccount"
@@ -830,6 +831,38 @@ func CreateHTTPAPIHandler(iManager integration.Manager) (*restful.Container, err
 		Param(apiV1Ws.PathParameter("namespace", "namespace of the Restore")).
 		Param(apiV1Ws.PathParameter("name", "name of the Restore")).
 		Returns(http.StatusOK, "OK", nil))
+	// Velero Schedule
+	apiV1Ws.Route(apiV1Ws.GET("/schedule").To(apiHandler.handleGetScheduleList).
+		// docs
+		Doc("returns a list of Velero Schedules from all namespaces").
+		Writes(schedule.ScheduleList{}).
+		Returns(http.StatusOK, "OK", schedule.ScheduleList{}))
+	apiV1Ws.Route(apiV1Ws.GET("/schedule/{namespace}").To(apiHandler.handleGetScheduleList).
+		// docs
+		Doc("returns a list of Velero Schedules in a namespace").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Schedule")).
+		Writes(schedule.ScheduleList{}).
+		Returns(http.StatusOK, "OK", schedule.ScheduleList{}))
+	apiV1Ws.Route(apiV1Ws.GET("/schedule/{namespace}/{name}").To(apiHandler.handleGetScheduleDetail).
+		// docs
+		Doc("returns detailed information about Velero Schedule").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Schedule")).
+		Param(apiV1Ws.PathParameter("name", "name of the Schedule")).
+		Writes(schedule.ScheduleDetail{}).
+		Returns(http.StatusOK, "OK", schedule.ScheduleDetail{}))
+	apiV1Ws.Route(apiV1Ws.POST("/schedule/{namespace}").To(apiHandler.handleCreateSchedule).
+		// docs
+		Doc("creates a new Velero Schedule").
+		Param(apiV1Ws.PathParameter("namespace", "namespace for the Schedule")).
+		Reads(schedule.ScheduleSpec{}).
+		Writes(schedule.Schedule{}).
+		Returns(http.StatusCreated, "Created", schedule.Schedule{}))
+	apiV1Ws.Route(apiV1Ws.DELETE("/schedule/{namespace}/{name}").To(apiHandler.handleDeleteSchedule).
+		// docs
+		Doc("deletes a Velero Schedule").
+		Param(apiV1Ws.PathParameter("namespace", "namespace of the Schedule")).
+		Param(apiV1Ws.PathParameter("name", "name of the Schedule")).
+		Returns(http.StatusOK, "OK", nil))
 
 	// Ingress
 	apiV1Ws.Route(apiV1Ws.GET("/ingress").To(apiHandler.handleGetIngressList).
@@ -1450,6 +1483,63 @@ func (in *APIHandler) handleDeleteRestore(request *restful.Request, response *re
 	name := request.PathParameter("name")
 
 	err := restore.DeleteRestore(request.Request, namespace.ToRequestParam(), name)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
+}
+
+func (in *APIHandler) handleGetScheduleList(request *restful.Request, response *restful.Response) {
+	dataSelect := parser.ParseDataSelectPathParameter(request)
+	namespace := parseNamespacePathParameter(request)
+	result, err := schedule.GetScheduleList(request.Request, namespace, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	_ = response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (in *APIHandler) handleGetScheduleDetail(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+	name := request.PathParameter("name")
+	result, err := schedule.GetScheduleDetail(request.Request, namespace, name)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	_ = response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (in *APIHandler) handleCreateSchedule(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+
+	var spec schedule.ScheduleSpec
+	if err := request.ReadEntity(&spec); err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	// Set namespace from URL if not provided in spec
+	if spec.Namespace == "" {
+		spec.Namespace = namespace.ToRequestParam()
+	}
+
+	result, err := schedule.CreateSchedule(request.Request, &spec)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	_ = response.WriteHeaderAndEntity(http.StatusCreated, result)
+}
+
+func (in *APIHandler) handleDeleteSchedule(request *restful.Request, response *restful.Response) {
+	namespace := parseNamespacePathParameter(request)
+	name := request.PathParameter("name")
+
+	err := schedule.DeleteSchedule(request.Request, namespace.ToRequestParam(), name)
 	if err != nil {
 		errors.HandleInternalError(response, err)
 		return
